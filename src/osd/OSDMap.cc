@@ -6128,7 +6128,7 @@ int OSDMap::calc_desired_primary_distribution_osdsize_opt(
 {
   const pg_pool_t *pool = get_pg_pool(pid);
   // MODIFY-XCH: check if the pool is erasure
-  if (1)
+  if (0)
   // if (!pool->is_replicated())
   { // read balancing works only for replicated pools
     ldout(cct, 10) << __func__ << " skipping erasure pool "
@@ -7677,7 +7677,7 @@ int OSDMap::calc_read_balance_score(CephContext *cct, int64_t pool_id,
   const pg_pool_t *pool = tmp_osd_map.get_pg_pool(pool_id);
   // MODIFY-XCH: remove check for replicated
   // if (!pool->is_replicated())
-  if (1)
+  if (0)
   {
     zero_rbi(*p_rbi);
     p_rbi->err_msg = fmt::format("pool {} is not a replicated pool, read balance score is meaningless", pool_id);
