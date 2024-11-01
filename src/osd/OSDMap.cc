@@ -5808,12 +5808,15 @@ int OSDMap::balance_primaries(
 {
   // This function only handles replicated pools.
   const pg_pool_t *pool = get_pg_pool(pid);
-  if (!pool->is_replicated())
-  {
-    ldout(cct, 10) << __func__ << " skipping erasure pool "
-                   << get_pool_name(pid) << dendl;
-    return -EINVAL;
-  }
+
+  // MODIFY-XCH: check if the pool is erasure
+
+  // if (!pool->is_replicated())
+  // {
+  //   ldout(cct, 10) << __func__ << " skipping erasure pool "
+  //                  << get_pool_name(pid) << dendl;
+  //   return -EINVAL;
+  // }
 
   // Info to be used in verify_upmap
   int pool_size = pool->get_size();
