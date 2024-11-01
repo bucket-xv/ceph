@@ -6049,7 +6049,10 @@ int OSDMap::calc_desired_primary_distribution_simple(
   //
   // This function only handles replicated pools.
   const pg_pool_t *pool = get_pg_pool(pid);
-  if (pool->is_replicated())
+
+  // MODIFY-XCH: check if the pool is erasure
+  // if (pool->is_replicated())
+  if (1)
   {
     ldout(cct, 20) << __func__ << " calculating simple distribution for replicated pool "
                    << get_pool_name(pid) << dendl;
