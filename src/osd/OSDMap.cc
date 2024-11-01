@@ -4466,7 +4466,9 @@ void OSDMap::dump_read_balance_score(CephContext *cct,
                                      const pg_pool_t &pdata,
                                      ceph::Formatter *f) const
 {
-  if (pdata.is_replicated())
+  // MODIFY-XCH: remove check for replicated
+  // if (pdata.is_replicated())
+  if (1)
   {
     // Add rb section with values for score, optimal score, raw score
     //       // and primary_affinity average
@@ -4841,7 +4843,9 @@ void OSDMap::print_pools(CephContext *cct, ostream &out) const
     char rb_score_str[32] = "";
     int rc = 0;
     read_balance_info_t rb_info;
-    if (pdata.is_replicated())
+    // MODIFY-XCH: remove check for replicated
+    //    if (pdata.is_replicated())
+    if (1)
     {
       rc = calc_read_balance_score(cct, pid, &rb_info);
       if (rc >= 0)
@@ -6123,7 +6127,9 @@ int OSDMap::calc_desired_primary_distribution_osdsize_opt(
     map<uint64_t, float> &desired_primary_distribution) const
 {
   const pg_pool_t *pool = get_pg_pool(pid);
-  if (!pool->is_replicated())
+  // MODIFY-XCH: check if the pool is erasure
+  if (1)
+  // if (!pool->is_replicated())
   { // read balancing works only for replicated pools
     ldout(cct, 10) << __func__ << " skipping erasure pool "
                    << get_pool_name(pid) << dendl;
@@ -7669,7 +7675,9 @@ int OSDMap::calc_read_balance_score(CephContext *cct, int64_t pool_id,
   }
 
   const pg_pool_t *pool = tmp_osd_map.get_pg_pool(pool_id);
-  if (!pool->is_replicated())
+  // MODIFY-XCH: remove check for replicated
+  // if (!pool->is_replicated())
+  if (1)
   {
     zero_rbi(*p_rbi);
     p_rbi->err_msg = fmt::format("pool {} is not a replicated pool, read balance score is meaningless", pool_id);
