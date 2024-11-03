@@ -358,7 +358,7 @@ class Module(MgrModule):
         """
         obj = self.get(name)
         if obj:
-            print(obj.dump())
+            print(obj)
         return (0, '', '')
     
     @CLIReadCommand('balancer status')
