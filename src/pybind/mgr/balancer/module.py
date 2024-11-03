@@ -350,6 +350,14 @@ class Module(MgrModule):
         super(Module, self).__init__(*args, **kwargs)
         self.event = Event()
 
+    # MODIFY-XCH: Experimenting func
+    @CLIReadCommand('balancer info')
+    def show_info(self, name) -> Any:
+        """
+        Show balancer info
+        """
+        return (0, self.get(name), '')
+    
     @CLIReadCommand('balancer status')
     def show_status(self) -> Tuple[int, str, str]:
         """
