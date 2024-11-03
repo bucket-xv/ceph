@@ -357,9 +357,10 @@ class Module(MgrModule):
         Show balancer info
         """
         obj = self.get(name)
-        if obj:
-            print(obj)
-        return (0, '', '')
+        out = ''
+        if isinstance(obj, dict):
+            out = json.dumps(obj, indent=4, sort_keys=True)
+        return (0, out, '')
     
     @CLIReadCommand('balancer status')
     def show_status(self) -> Tuple[int, str, str]:
