@@ -350,13 +350,7 @@ class Module(MgrModule):
         super(Module, self).__init__(*args, **kwargs)
         self.event = Event()
 
-    # MODIFY-XCH: Experimenting func
-    @CLIReadCommand('balancer info')
-    def show_info(self, name) -> Any:
-        """
-        Show balancer info
-        """
-        return (0, self.get(name), '')
+
     
     @CLIReadCommand('balancer status')
     def show_status(self) -> Tuple[int, str, str]:
@@ -564,6 +558,9 @@ class Module(MgrModule):
         Evaluate data distribution for the current cluster or specific pool or specific
         plan (verbosely)
         """
+        if option is not None:
+            # MODIFY-XCH: Experimenting func
+            return (0, self.get(option), '')
         try:
             ms, pools = self._state_from_option(option)
             return (0, self.evaluate(ms, pools, verbose=True), '')
