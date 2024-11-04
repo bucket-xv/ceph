@@ -1133,12 +1133,19 @@ class Module(MgrModule):
                 continue
             adjusted_pools.append(pool)
         pool_dump = osdmap_dump.get('pools', [])
+        # MODIFY-XCH: add check for replicated
+        pg_stats = self.get('pg_stats')['pg_stats']
         for pool in adjusted_pools:
             for p in pool_dump:
                 if p['pool_name'] == pool:
                     pool_id = p['pool']
+                    ecpool = (p['erasure_code_profile'] != '')
                     break
-            num_changes = plan.osdmap.balance_primaries(pool_id, inc)
+            if not ecpool:
+                num_changes = plan.osdmap.balance_primaries(pool_id, inc)
+            else:
+                pool_pg_stats = pg_stats[pool_id]
+                num_changes = plan.osdmap.balance_ec_primaries(pool_id, inc, pg_stats)
             total_num_changes += num_changes
         if total_num_changes < 0:
             self.no_optimization_needed = True
