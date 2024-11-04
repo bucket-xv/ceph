@@ -256,6 +256,7 @@ static PyObject *osdmap_balance_ec_primaries(BasePyOSDMap *self, PyObject *args)
   OSDMap tmp_osd_map;
   tmp_osd_map.deepish_copy_from(*(self->osdmap));
   dout(10) << __func__ << " succeed" << dendl;
+  dout(10) << __func__ << " bytes_used " << bytes_used.size() << dendl;
   int r = self->osdmap->balance_ec_primaries(g_ceph_context,
                                              pool_id,
                                              incobj->inc,
