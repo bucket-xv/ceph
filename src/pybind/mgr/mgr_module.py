@@ -247,7 +247,7 @@ class OSDMap(ceph_module.BasePyOSDMap):
     # MODIFY-XCH
     def balance_ec_primaries(self, pool_id: int,
                           inc: 'OSDMapIncremental', bytes_used: Dict[int,int]) -> int:
-        return self._balance_ec_primaries(pool_id, inc)
+        return self._balance_ec_primaries(pool_id, inc, bytes_used)
     
     def map_pool_pgs_up(self, poolid: int) -> List[int]:
         return self._map_pool_pgs_up(poolid)
