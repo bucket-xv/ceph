@@ -212,10 +212,11 @@ static PyObject *osdmap_balance_ec_primaries(BasePyOSDMap *self, PyObject *args)
   int pool_id;
   BasePyOSDMapIncremental *incobj;
   PyObject *py_dict;
-  std::map<int, int> bytes_used;
+  std::map<int, uint64_t> bytes_used;
   if (!PyArg_ParseTuple(args, "iOO:balance_ec_primaries",
                         &pool_id, &incobj, &py_dict))
   {
+    derr << __func__ << " not enough args" << dendl;
     return nullptr;
   }
   auto check_pool = self->osdmap->get_pg_pool(pool_id);
@@ -254,11 +255,11 @@ static PyObject *osdmap_balance_ec_primaries(BasePyOSDMap *self, PyObject *args)
   PyThreadState *tstate = PyEval_SaveThread();
   OSDMap tmp_osd_map;
   tmp_osd_map.deepish_copy_from(*(self->osdmap));
-  dout(10) << __func__ << " bytes_used succeed" << dendl;
-  // int r = self->osdmap->balance_ec_primaries(g_ceph_context,
-  //                                            pool_id,
-  //                                            incobj->inc,
-  //                                            tmp_osd_map, bytes_used);
+  dout(10) << __func__ << " succeed" << dendl;
+  int r = self->osdmap->balance_ec_primaries(g_ceph_context,
+                                             pool_id,
+                                             incobj->inc,
+                                             tmp_osd_map, bytes_used);
   PyEval_RestoreThread(tstate);
   dout(10) << __func__ << " r = " << r << dendl;
   return PyLong_FromLong(r);

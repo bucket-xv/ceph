@@ -5802,6 +5802,16 @@ bool OSDMap::try_pg_upmap(
     return false;
   return true;
 }
+int OSDMap::balance_ec_primaries(
+    CephContext *cct,
+    int64_t pid,
+    OSDMap::Incremental *pending_inc,
+    OSDMap &tmp_osd_map,
+    map<int, uint64_t> &bytes_used,
+    const std::optional<rb_policy> &rbp) const
+{
+  return 0;
+}
 
 int OSDMap::balance_primaries(
     CephContext *cct,
