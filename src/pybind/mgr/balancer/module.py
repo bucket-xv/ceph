@@ -1135,7 +1135,7 @@ class Module(MgrModule):
         pool_dump = osdmap_dump.get('pools', [])
         # MODIFY-XCH: add check for replicated
         pg_stats = self.get('pg_stats')['pg_stats']
-        bytes_used = [dict() for i in range(len(pools))]
+        bytes_used = [dict() for i in range(len(pools)+1)]
         for pg in pg_stats:
             parts = pg['pgid'].split('.')
 
