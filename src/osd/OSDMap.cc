@@ -5825,37 +5825,9 @@ int OSDMap::balance_primaries(
 
   if (!pool->is_replicated())
   {
-    // ldout(cct, 10) << __func__ << " skipping erasure pool "
-    //                << get_pool_name(pid) << dendl;
-    // return -EINVAL;
-
-    // MODIFY-XCH: Design balance primaries for erasure pools
-
-    int crush_rule = pool->get_crush_rule();
-
-    map<uint64_t, set<pg_t>> pgs_by_osd; // This is only used to pass to get_pgs_by_osd
-    map<uint64_t, set<pg_t>> prim_pgs_by_osd;
-    map<uint64_t, set<pg_t>> acting_prims_by_osd; // This is only used to pass to get_pgs_by_osd
-    pgs_by_osd = tmp_osd_map.get_pgs_by_osd(cct, pid, &prim_pgs_by_osd, &acting_prims_by_osd);
-
-    // Construct information about the pgs and osds we will consider in new primary mappings,
-    // as well as a map of all pgs and their original primary osds.
-    vector<uint64_t> osds_to_check;
-    vector<pg_t> pgs_to_check;
-    for (const auto &[osd, pgs] : prim_pgs_by_osd)
-    {
-      osds_to_check.push_back(osd);
-      for (const auto &pg : pgs)
-      {
-        pgs_to_check.push_back(pg);
-      }
-    }
-
-    //  tmp_osd_map.pg_to_up_acting_osds(pg, &up_osds, &up_primary,  &acting_osds, &acting_primary);
-
-    int num_changes = 0;
-    ldout(cct, 10) << __func__ << " num_changes " << num_changes << dendl;
-    return num_changes;
+    ldout(cct, 10) << __func__ << " skipping erasure pool "
+                   << get_pool_name(pid) << dendl;
+    return -EINVAL;
   }
 
   // Info to be used in verify_upmap
