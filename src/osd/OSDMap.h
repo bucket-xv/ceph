@@ -1678,7 +1678,7 @@ public:
       int64_t pid,
       OSDMap::Incremental *pending_inc,
       OSDMap &tmp_osd_map,
-      map<int, uint64_t> &bytes_used,
+      std::map<int, uint64_t> &bytes_used,
       const std::optional<rb_policy> &rbp = std::nullopt) const;
 
   void rm_all_upmap_prims(CephContext *cct, Incremental *pending_inc, uint64_t pid);
