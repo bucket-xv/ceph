@@ -5813,6 +5813,7 @@ int OSDMap::balance_ec_primaries(
   return 0;
 }
 
+
 int OSDMap::balance_primaries(
     CephContext *cct,
     int64_t pid,
@@ -6019,6 +6020,7 @@ void OSDMap::rm_all_upmap_prims(CephContext *cct, OSDMap::Incremental *pending_i
     }
   }
 }
+
 
 int OSDMap::calc_desired_primary_distribution(
     CephContext *cct,

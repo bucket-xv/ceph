@@ -237,8 +237,10 @@ static PyObject *osdmap_balance_ec_primaries(BasePyOSDMap *self, PyObject *args)
 
     while (PyDict_Next(py_dict, &pos, &key, &value))
     {
-      if (PyLong_Check(key) && PyLong_Check(value))
+      if (PyLong_Check(key) && PyLong_Check(value)){
+        std::cout<<PyLong_AsLong(key)<<" "<<PyLong_AsLong(value)<<std::endl;
         bytes_used[PyLong_AsLong(key)] = PyLong_AsLong(value);
+      }
 
       else
       {
