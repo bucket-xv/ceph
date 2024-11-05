@@ -5852,8 +5852,6 @@ int OSDMap::balance_ec_primaries(
 
   sort(bytes_used_by_pg.begin(), bytes_used_by_pg.end(), std::greater<std::pair<uint64_t, pg_t>>());
   int num_changes = 0;
-  
-  
   for(auto &[bytes, pg] : bytes_used_by_pg)
   {
     ldout(cct, 10) << __func__ << " pg " << pg << " bytes " << bytes << dendl;
@@ -5862,7 +5860,7 @@ int OSDMap::balance_ec_primaries(
     int up_primary, acting_primary;
     tmp_osd_map.pg_to_up_acting_osds(pg, &up_osds, &up_primary,
                                        &acting_osds, &acting_primary);
-    int best_primary = up_primary;
+    int curr_best_osd = up_primary;
     for(auto osd : up_osds)
     {
       if(bytes_used_by_osd.find(osd) == bytes_used_by_osd.end())
@@ -5870,15 +5868,23 @@ int OSDMap::balance_ec_primaries(
         ldout(cct, 10) << __func__ << " ERROR: osd " << osd << " not found in bytes_used_by_osd" << dendl;
         return -EINVAL;
       }
-      if(bytes_used_by_osd[osd] < bytes_used_by_osd[best_primary])
+      if(bytes_used_by_osd[osd] < bytes_used_by_osd[curr_best_osd])
       {
-        best_primary = osd;
+        auto legal_swap = crush->verify_upmap(cct,
+                                            crush_rule,
+                                            pool_size,
+                                            {(int)osd});
+
+        if(legal_swap)
+          curr_best_osd = osd;
+        else ldout(cct, 10) << __func__ << " not legal swap" << " osd " << osd << dendl;
       }
     }
-    bytes_used_by_osd[best_primary] += bytes;
-    if(best_primary != up_primary){
-      ldout(cct, 10) << __func__ << " pg " << pg << " moving from " << up_primary << " to " << best_primary << dendl;
-      pending_inc->set_primary(pg, best_primary);
+    bytes_used_by_osd[curr_best_osd] += bytes;
+    if(curr_best_osd != up_primary){
+      ldout(cct, 10) << __func__ << " pg " << pg << " moving from " << up_primary << " to " << curr_best_osd << dendl;
+      tmp_osd_map.pg_upmap_primaries[pg] = curr_best_osd;
+      pending_inc->new_pg_upmap_primary[pg] = curr_best_osd;
       ++num_changes;
     }
   }
