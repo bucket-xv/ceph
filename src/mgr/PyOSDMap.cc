@@ -226,7 +226,7 @@ static PyObject *osdmap_balance_ec_primaries(BasePyOSDMap *self, PyObject *args)
          << "' does not exist" << dendl;
     return nullptr;
   }
-  dout(10) << __func__ << " osdmap " << self->osdmap
+  dout(0) << __func__ << " osdmap " << self->osdmap
            << " pool_id " << pool_id
            << " inc " << incobj->inc
            << dendl;
@@ -257,8 +257,8 @@ static PyObject *osdmap_balance_ec_primaries(BasePyOSDMap *self, PyObject *args)
   PyThreadState *tstate = PyEval_SaveThread();
   OSDMap tmp_osd_map;
   tmp_osd_map.deepish_copy_from(*(self->osdmap));
-  dout(10) << __func__ << " succeed" << dendl;
-  dout(10) << __func__ << " bytes_used " << bytes_used.size() << dendl;
+  derr << __func__ << " succeed" << dendl;
+  dout(0) << __func__ << " bytes_used " << bytes_used.size() << dendl;
   int r = self->osdmap->balance_ec_primaries(g_ceph_context,
                                              pool_id,
                                              incobj->inc,
