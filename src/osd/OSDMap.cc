@@ -5875,7 +5875,7 @@ int OSDMap::balance_ec_primaries(
                                             pool_size,
                                             {(int)osd});
 
-        if(legal_swap)
+        if(legal_swap >= 0)
           curr_best_osd = osd;
         else ldout(cct, 10) << __func__ << " not legal swap" << " osd " << osd << dendl;
       }
