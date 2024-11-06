@@ -14813,7 +14813,8 @@ bool OSDMonitor::prepare_command_impl(MonOpRequestRef op,
       // take special care here
       // verify_upmap uses pool_size, so it does not apply to ecpools as well
       // TODO-XCH: crush rules check to add?
-      if((osdmap.get_pg_pool(pgid.pool()))->is_ecpool()){
+      if((osdmap.get_pg_pool(pgid.pool()))->is_erasure()){
+        ss << "erasure coded pool ";
         if(found_idx == 0 && acting[0] != id){
           ss << "osd." << id << " is not in acting set for pg " << pgid;
           err = -EINVAL;
@@ -14822,6 +14823,7 @@ bool OSDMonitor::prepare_command_impl(MonOpRequestRef op,
         ss << "change primary for pg " << pgid << " to osd." << id;
       }
       else{
+        ss << "replicated pool ";
         if (found_idx == 0)
         {
           ss << "osd." << id << " is not in acting set for pg " << pgid;
