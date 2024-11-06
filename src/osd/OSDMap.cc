@@ -5861,6 +5861,8 @@ int OSDMap::balance_ec_primaries(
     tmp_osd_map.pg_to_up_acting_osds(pg, &up_osds, &up_primary,
                                        &acting_osds, &acting_primary);
     int curr_best_osd = up_primary;
+    ldout(cct, 10) << __func__ << "up_primary " << up_primary << " primary affinity "<<
+      get_primary_affinityf(up_primary) << dendl;
     for(auto osd : up_osds)
     {
       if(bytes_used_by_osd.find(osd) == bytes_used_by_osd.end())
@@ -5868,9 +5870,11 @@ int OSDMap::balance_ec_primaries(
         ldout(cct, 10) << __func__ << " ERROR: osd " << osd << " not found in bytes_used_by_osd" << dendl;
         return -EINVAL;
       }
+      
       if(get_primary_affinityf(curr_best_osd) * (float)bytes_used_by_osd[osd] < 
         get_primary_affinityf(osd) * (float)bytes_used_by_osd[curr_best_osd])
       {
+        
         // TODO-XCH: This function seems to only handle replicated pools
         // Need a new function to check erasure-coded pools
         // Or indeed there is no need for such a check?
