@@ -14594,9 +14594,9 @@ bool OSDMonitor::prepare_command_impl(MonOpRequestRef op,
 
     case OP_PG_UPMAP_PRIMARY: // fall through
     case OP_RM_PG_UPMAP_PRIMARY:
-    {
-      const pg_pool_t *pt = osdmap.get_pg_pool(pgid.pool());
+    { 
       // MODIFY-XCH: remove check for replicated
+      // const pg_pool_t *pt = osdmap.get_pg_pool(pgid.pool());
       //       if (! pt->is_replicated()) {
       //   ss << "pg-upmap-primary is only supported for replicated pools";
       //   err = -EINVAL;
