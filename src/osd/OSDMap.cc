@@ -5868,7 +5868,8 @@ int OSDMap::balance_ec_primaries(
         ldout(cct, 10) << __func__ << " ERROR: osd " << osd << " not found in bytes_used_by_osd" << dendl;
         return -EINVAL;
       }
-      if(bytes_used_by_osd[osd] < bytes_used_by_osd[curr_best_osd])
+      if(get_primary_affinityf(curr_best_osd) * (float)bytes_used_by_osd[osd] < 
+        get_primary_affinityf(osd) * (float)bytes_used_by_osd[curr_best_osd])
       {
         auto legal_swap = crush->verify_upmap(cct,
                                             crush_rule,
