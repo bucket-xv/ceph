@@ -14812,6 +14812,8 @@ bool OSDMonitor::prepare_command_impl(MonOpRequestRef op,
       if (found_idx == 0)
       {
         ss << "osd." << id << " is not in acting set for pg " << pgid;
+        for(int i=0;i<(int)acting.size();i++)
+          ss<< " " << acting[i];
         err = -EINVAL;
         goto reply_no_propose;
       }
