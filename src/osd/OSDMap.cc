@@ -3157,6 +3157,8 @@ void OSDMap::_apply_upmap(const pg_pool_t &pi, pg_t raw_pg, vector<int> *raw) co
   auto r = pg_upmap_primaries.find(pg);
   if (r != pg_upmap_primaries.end())
   {
+    // TODO-XCH: erasure coded pool cannot bear changing the order of osds
+    // Additional interface is needed for changing primary of erasure coded pools
     auto new_prim = r->second;
     // Apply mapping only if new primary is not marked out and valid osd id
     if (new_prim != CRUSH_ITEM_NONE && new_prim < max_osd && new_prim >= 0 &&
