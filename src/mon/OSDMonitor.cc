@@ -14809,29 +14809,41 @@ bool OSDMonitor::prepare_command_impl(MonOpRequestRef op,
           break;
         }
       }
-      if (found_idx == 0)
-      {
-        ss << "osd." << id << " is not in acting set for pg " << pgid;
-        for(int i=0;i<(int)acting.size();i++)
-          ss<< " " << acting[i];
-        err = -EINVAL;
-        goto reply_no_propose;
-      }
-      vector<int> new_acting(acting);
-      new_acting[found_idx] = new_acting[0];
-      new_acting[0] = id;
-      int pool_size = osdmap.get_pg_pool_size(pgid);
-      if (osdmap.crush->verify_upmap(cct, osdmap.get_pg_pool_crush_rule(pgid),
-                                     pool_size, new_acting) >= 0)
-      {
+      // MODIFY-XCH: For ecpools, the primary is not always acting[0], so we
+      // take special care here
+      // verify_upmap uses pool_size, so it does not apply to ecpools as well
+      // TODO-XCH: crush rules check to add?
+      if(get_pg_pool(pid)->is_ecpool()){
+        if(found_idx == 0 && acting[0] != id){
+          ss << "osd." << id << " is not in acting set for pg " << pgid;
+          err = -EINVAL;
+          goto reply_no_propose;
+        }
         ss << "change primary for pg " << pgid << " to osd." << id;
       }
-      else
-      {
-        ss << "can't change primary for pg " << pgid << " to osd." << id
-           << " - illegal pg after the change";
-        err = -EINVAL;
-        goto reply_no_propose;
+      else{
+        if (found_idx == 0)
+        {
+          ss << "osd." << id << " is not in acting set for pg " << pgid;
+          err = -EINVAL;
+          goto reply_no_propose;
+        }
+        vector<int> new_acting(acting);
+        new_acting[found_idx] = new_acting[0];
+        new_acting[0] = id;
+        int pool_size = osdmap.get_pg_pool_size(pgid);
+        if (osdmap.crush->verify_upmap(cct, osdmap.get_pg_pool_crush_rule(pgid),
+                                      pool_size, new_acting) >= 0)
+        {
+          ss << "change primary for pg " << pgid << " to osd." << id;
+        }
+        else
+        {
+          ss << "can't change primary for pg " << pgid << " to osd." << id
+            << " - illegal pg after the change";
+          err = -EINVAL;
+          goto reply_no_propose;
+        }
       }
       pending_inc.new_pg_upmap_primary[pgid] = id;
       // TO-REMOVE:

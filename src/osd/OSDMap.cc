@@ -5871,6 +5871,9 @@ int OSDMap::balance_ec_primaries(
       if(get_primary_affinityf(curr_best_osd) * (float)bytes_used_by_osd[osd] < 
         get_primary_affinityf(osd) * (float)bytes_used_by_osd[curr_best_osd])
       {
+        // TODO-XCH: This function seems to only handle replicated pools
+        // Need a new function to check erasure-coded pools
+        // Or indeed there is no need for such a check?
         auto legal_swap = crush->verify_upmap(cct,
                                             crush_rule,
                                             pool_size,
