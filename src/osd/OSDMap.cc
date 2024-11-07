@@ -3225,6 +3225,11 @@ void OSDMap::_apply_primary_affinity(ps_t seed,
   // do we have any non-default primary_affinity values for these osds?
   if (!osd_primary_affinity)
     return;
+  
+  // MODIFY-XCH: erasure coded pools have their own way to couple with
+  // primary affinity
+  if(pool.is_erasure())
+    return;
 
   bool any = false;
   for (const auto osd : *osds)
