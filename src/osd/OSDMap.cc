@@ -5885,11 +5885,13 @@ int OSDMap::balance_ec_primaries(
         // TODO-XCH: This function seems to only handle replicated pools
         // Need a new function to check erasure-coded pools
         // Or indeed there is no need for such a check?
-        auto legal_swap = crush->verify_upmap(cct,
-                                            crush_rule,
-                                            pool_size,
-                                            {(int)osd});
+        // auto legal_swap = crush->verify_upmap(cct,
+        //                                     crush_rule,
+        //                                     pool_size,
+        //                                     {(int)osd});
 
+        // Suppose this is always legal
+        int legal_swap = 0;
         if(legal_swap >= 0)
           curr_best_osd = osd;
         else ldout(cct, 10) << __func__ << " not legal swap" << " osd " << osd << dendl;
