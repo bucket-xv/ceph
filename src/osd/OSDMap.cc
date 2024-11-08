@@ -5070,8 +5070,8 @@ int OSDMap::balance_ec_primaries(
   }
 
   // Info to be used in verify_upmap
-  int pool_size = pool->get_size();
-  int crush_rule = pool->get_crush_rule();
+  // int pool_size = pool->get_size();
+  // int crush_rule = pool->get_crush_rule();
 
   // Get pgs by osd (map of osd -> pgs)
   // Get primaries by osd (map of osd -> primary)
