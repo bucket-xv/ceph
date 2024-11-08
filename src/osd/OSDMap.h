@@ -1492,7 +1492,7 @@ public:
     OSDMap& tmp_osd_map,
     const std::optional<rb_policy>& rbp = std::nullopt) const;
   
-  int OSDMap::balance_ec_primaries(
+  int balance_ec_primaries(
     CephContext *cct,
     int64_t pid,
     OSDMap::Incremental *pending_inc,
