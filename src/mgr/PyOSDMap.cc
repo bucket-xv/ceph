@@ -192,6 +192,68 @@ static PyObject *osdmap_balance_primaries(BasePyOSDMap* self, PyObject *args)
   return PyLong_FromLong(r);
 }
 
+// MODIFY-XCH
+static PyObject *osdmap_balance_ec_primaries(BasePyOSDMap *self, PyObject *args)
+{
+  int pool_id;
+  BasePyOSDMapIncremental *incobj;
+  PyObject *py_dict;
+  std::map<int, uint64_t> bytes_used;
+  if (!PyArg_ParseTuple(args, "iOO:balance_ec_primaries",
+                        &pool_id, &incobj, &py_dict))
+  {
+    derr << __func__ << " not enough args" << dendl;
+    return nullptr;
+  }
+  auto check_pool = self->osdmap->get_pg_pool(pool_id);
+  if (!check_pool)
+  {
+    derr << __func__ << " pool '" << pool_id
+         << "' does not exist" << dendl;
+    return nullptr;
+  }
+  dout(0) << __func__ << " osdmap " << self->osdmap
+           << " pool_id " << pool_id
+           << " inc " << incobj->inc
+           << dendl;
+  if (PyDict_Check(py_dict))
+  {
+    PyObject *key, *value;
+    Py_ssize_t pos = 0;
+
+    while (PyDict_Next(py_dict, &pos, &key, &value))
+    {
+      if (PyLong_Check(key) && PyLong_Check(value)){
+        std::cout<<PyLong_AsLong(key)<<" "<<PyLong_AsLong(value)<<std::endl;
+        bytes_used[PyLong_AsLong(key)] = PyLong_AsLong(value);
+      }
+
+      else
+      {
+        derr << __func__ << " key '" << PyUnicode_AsUTF8(key)
+             << "' or value '" << PyUnicode_AsUTF8(value)
+             << "' is not a long" << dendl;
+        return nullptr;
+      }
+    }
+  }
+  else
+    derr << __func__ << " py_dict not a dict" << dendl;
+
+  PyThreadState *tstate = PyEval_SaveThread();
+  OSDMap tmp_osd_map;
+  tmp_osd_map.deepish_copy_from(*(self->osdmap));
+  derr << __func__ << " succeed" << dendl;
+  dout(0) << __func__ << " bytes_used " << bytes_used.size() << dendl;
+  int r = self->osdmap->balance_ec_primaries(g_ceph_context,
+                                             pool_id,
+                                             incobj->inc,
+                                             tmp_osd_map, bytes_used);
+  PyEval_RestoreThread(tstate);
+  dout(10) << __func__ << " r = " << r << dendl;
+  return PyLong_FromLong(r);
+}
+
 static PyObject *osdmap_map_pool_pgs_up(BasePyOSDMap* self, PyObject *args)
 {
   int poolid;
@@ -356,6 +418,8 @@ PyMethodDef BasePyOSDMap_methods[] = {
    "Calculate new pg-upmap values"},
   {"_balance_primaries", (PyCFunction)osdmap_balance_primaries, METH_VARARGS,
    "Calculate new pg-upmap-primary values"},
+  {"_balance_ec_primaries", (PyCFunction)osdmap_balance_ec_primaries, METH_VARARGS,
+   "Calculate new pg-upmap-primary values for ecpool"},
   {"_map_pool_pgs_up", (PyCFunction)osdmap_map_pool_pgs_up, METH_VARARGS,
    "Calculate up set mappings for all PGs in a pool"},
   {"_pg_to_up_acting_osds", (PyCFunction)osdmap_pg_to_up_acting_osds, METH_VARARGS,

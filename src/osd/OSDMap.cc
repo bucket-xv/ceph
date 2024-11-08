@@ -2803,6 +2803,11 @@ void OSDMap::_apply_primary_affinity(ps_t seed,
   // do we have any non-default primary_affinity values for these osds?
   if (!osd_primary_affinity)
     return;
+  
+  // MODIFY-XCH: erasure coded pools have their own way to couple with
+  // primary affinity
+  if(pool.is_erasure())
+    return;
 
   bool any = false;
   for (const auto osd : *osds) {
@@ -3859,7 +3864,9 @@ void OSDMap::dump_read_balance_score(CephContext *cct,
 				     const pg_pool_t &pdata,
 				     ceph::Formatter *f) const
 {
-  if (pdata.is_replicated()) {
+  // MODIFY-XCH: remove check for replicated
+  // if (pdata.is_replicated())
+  if (1) {
     // Add rb section with values for score, optimal score, raw score
     //       // and primary_affinity average
     OSDMap::read_balance_info_t rb_info;
@@ -4201,7 +4208,9 @@ void OSDMap::print_pools(CephContext *cct, ostream& out) const
     char rb_score_str[32] = "";
     int rc = 0;
     read_balance_info_t rb_info;
-    if (pdata.is_replicated()) {
+    // MODIFY-XCH: remove check for replicated
+    //    if (pdata.is_replicated())
+    if (1) {
       rc = calc_read_balance_score(cct, pid, &rb_info);
       if (rc >= 0)
         snprintf (rb_score_str, sizeof(rb_score_str),
@@ -5041,6 +5050,105 @@ bool OSDMap::try_pg_upmap(
 }
 
 
+// MODIFY-XCH: Create balance primaries for ec pools
+int OSDMap::balance_ec_primaries(
+    CephContext *cct,
+    int64_t pid,
+    OSDMap::Incremental *pending_inc,
+    OSDMap &tmp_osd_map,
+    std::map<int, uint64_t> &bytes_used,
+    const std::optional<rb_policy> &rbp) const
+{
+  // This function only handles erasure pools.
+  const pg_pool_t *pool = get_pg_pool(pid);
+
+  if(!pool->is_erasure())
+  {
+    ldout(cct, 10) << __func__ << " skipping replicated pool "
+                   << get_pool_name(pid) << dendl;
+    return -EINVAL;
+  }
+
+  // Info to be used in verify_upmap
+  int pool_size = pool->get_size();
+  int crush_rule = pool->get_crush_rule();
+
+  // Get pgs by osd (map of osd -> pgs)
+  // Get primaries by osd (map of osd -> primary)
+  map<uint64_t, set<pg_t>> pgs_by_osd;
+  map<uint64_t, set<pg_t>> prim_pgs_by_osd;
+  map<uint64_t, set<pg_t>> acting_prims_by_osd;
+  pgs_by_osd = tmp_osd_map.get_pgs_by_osd(cct, pid, &prim_pgs_by_osd, &acting_prims_by_osd);
+
+  // Construct information about the pgs and osds we will consider in new primary mappings,
+  // as well as a map of all pgs and their original primary osds.
+  vector<std::pair<uint64_t, pg_t>> bytes_used_by_pg;
+  map<uint64_t, uint64_t> bytes_used_by_osd;      
+  for (const auto &[osd, pgs] : prim_pgs_by_osd)
+  {
+    bytes_used_by_osd[osd] = 0;
+    for (const auto &pg : pgs){
+      if(bytes_used.find(pg.m_seed) == bytes_used.end())
+      {
+        ldout(cct, 10) << __func__ << " ERROR: pg " << pg << " not found in bytes_used" << dendl;
+        return -EINVAL;
+      }
+      bytes_used_by_pg.push_back(std::make_pair(bytes_used[pg.m_seed], pg));
+    }
+  }
+
+  sort(bytes_used_by_pg.begin(), bytes_used_by_pg.end(), std::greater<std::pair<uint64_t, pg_t>>());
+  int num_changes = 0;
+  for(auto &[bytes, pg] : bytes_used_by_pg)
+  {
+    ldout(cct, 10) << __func__ << " pg " << pg << " bytes " << bytes << dendl;
+    vector<int> up_osds;
+    vector<int> acting_osds;
+    int up_primary, acting_primary;
+    tmp_osd_map.pg_to_up_acting_osds(pg, &up_osds, &up_primary,
+                                       &acting_osds, &acting_primary);
+    int curr_best_osd = up_primary;
+    ldout(cct, 10) << __func__ << "up_primary " << up_primary << " primary affinity "<<
+      get_primary_affinityf(up_primary) << dendl;
+    for(auto osd : up_osds)
+    {
+      if(bytes_used_by_osd.find(osd) == bytes_used_by_osd.end())
+      {
+        ldout(cct, 10) << __func__ << " ERROR: osd " << osd << " not found in bytes_used_by_osd" << dendl;
+        return -EINVAL;
+      }
+      
+      if(get_primary_affinityf(curr_best_osd) * (float)bytes_used_by_osd[osd] < 
+        get_primary_affinityf(osd) * (float)bytes_used_by_osd[curr_best_osd])
+      {
+        
+        // TODO-XCH: This function seems to only handle replicated pools
+        // Need a new function to check erasure-coded pools
+        // Or indeed there is no need for such a check?
+        // auto legal_swap = crush->verify_upmap(cct,
+        //                                     crush_rule,
+        //                                     pool_size,
+        //                                     {(int)osd});
+
+        // Suppose this is always legal
+        int legal_swap = 0;
+        if(legal_swap >= 0)
+          curr_best_osd = osd;
+        else ldout(cct, 10) << __func__ << " not legal swap" << " osd " << osd << dendl;
+      }
+    }
+    bytes_used_by_osd[curr_best_osd] += bytes;
+    if(curr_best_osd != up_primary){
+      ldout(cct, 10) << __func__ << " pg " << pg << " moving from " << up_primary << " to " << curr_best_osd << dendl;
+      tmp_osd_map.pg_upmap_primaries[pg] = curr_best_osd;
+      pending_inc->new_pg_upmap_primary[pg] = curr_best_osd;
+      ++num_changes;
+    }
+  }
+  return num_changes;
+}
+
+
 int OSDMap::balance_primaries(
   CephContext *cct,
   int64_t pid,
@@ -5257,7 +5365,10 @@ int OSDMap::calc_desired_primary_distribution_simple(
   //
   // This function only handles replicated pools.
   const pg_pool_t* pool = get_pg_pool(pid);
-  if (pool->is_replicated()) {
+  
+  // MODIFY-XCH: check if the pool is erasure
+  // if (pool->is_replicated())
+  if (1){
     ldout(cct, 20) << __func__ << " calculating simple distribution for replicated pool "
                    << get_pool_name(pid) << dendl;
     uint64_t replica_count = pool->get_size();
@@ -5321,7 +5432,11 @@ int OSDMap::calc_desired_primary_distribution_osdsize_opt(
   map<uint64_t, float>& desired_primary_distribution) const
 {
   const pg_pool_t* pool = get_pg_pool(pid);
-  if (!pool->is_replicated()) {   // read balancing works only for replicated pools
+  
+  // MODIFY-XCH: check if the pool is erasure
+  if (0){
+    // if (!pool->is_replicated())
+    // read balancing works only for replicated pools
     ldout(cct, 10) << __func__ <<" skipping erasure pool "
                    << get_pool_name(pid) << dendl;
     return -EINVAL;
@@ -6704,7 +6819,9 @@ int OSDMap::calc_read_balance_score(CephContext *cct, int64_t pool_id,
   }
 
   const pg_pool_t* pool = tmp_osd_map.get_pg_pool(pool_id);
-  if (!pool->is_replicated()) {
+  // MODIFY-XCH: remove check for replicated
+  // if (!pool->is_replicated()){
+  if(0){
     zero_rbi(*p_rbi);
     p_rbi->err_msg = fmt::format("pool {} is not a replicated pool, read balance score is meaningless", pool_id);
     return -EPERM;

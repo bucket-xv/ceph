@@ -486,11 +486,14 @@ int main(int argc, const char **argv)
     }
 
     const pg_pool_t* pool = osdmap.get_pg_pool(pid);
-    if (! pool->is_replicated()) {
-      cerr << read_pool << " is an erasure coded pool; "
-	   << "please try again with a replicated pool." << std::endl;
-      exit(1);
-    }
+    
+    // MODIFY-XCH: check if the pool is erasure
+
+    // if (! pool->is_replicated()) {
+    //   cerr << read_pool << " is an erasure coded pool; "
+	  //  << "please try again with a replicated pool." << std::endl;
+    //   exit(1);
+    // }
 
     int64_t read_ratio = 0;
     if (osd_size_aware) {

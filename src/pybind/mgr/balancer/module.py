@@ -1121,12 +1121,29 @@ class Module(MgrModule):
                 continue
             adjusted_pools.append(pool)
         pool_dump = osdmap_dump.get('pools', [])
+        # MODIFY-XCH: add check for replicated
+        pg_stats = self.get('pg_stats')['pg_stats']
+        bytes_used = [dict() for i in range(len(pools)+1)]
+        for pg in pg_stats:
+            parts = pg['pgid'].split('.')
+
+            # Convert the first part to decimal (it should already be in decimal format)
+            pid = int(parts[0])
+
+            # Convert the second part to hexadecimal
+            pgid = int(parts[1], 16)
+            bytes_used[pid][pgid] = pg['stat_sum']['num_bytes']
+
         for pool in adjusted_pools:
             for p in pool_dump:
                 if p['pool_name'] == pool:
                     pool_id = p['pool']
+                    ecpool = (p['erasure_code_profile'] != '')
                     break
-            num_changes = plan.osdmap.balance_primaries(pool_id, inc)
+            if not ecpool:
+                num_changes = plan.osdmap.balance_primaries(pool_id, inc)
+            else:
+                num_changes = plan.osdmap.balance_ec_primaries(pool_id, inc, bytes_used[pool_id])
             total_num_changes += num_changes
         if total_num_changes < 0:
             self.no_optimization_needed = True
