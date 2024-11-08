@@ -198,7 +198,7 @@ static PyObject *osdmap_balance_ec_primaries(BasePyOSDMap *self, PyObject *args)
   int pool_id;
   BasePyOSDMapIncremental *incobj;
   PyObject *py_dict;
-  std::map<int, uint64_t> bytes_used;
+  std::map<uint32_t, uint64_t> bytes_used;
   if (!PyArg_ParseTuple(args, "iOO:balance_ec_primaries",
                         &pool_id, &incobj, &py_dict))
   {
