@@ -129,8 +129,8 @@ public:
     return peering_state.get_pg_trim_to();
   }
 
-  eversion_t get_min_last_complete_ondisk() const {
-    return peering_state.get_min_last_complete_ondisk();
+  eversion_t get_pg_committed_to() const {
+    return peering_state.get_pg_committed_to();
   }
 
   const pg_info_t& get_info() const final {
@@ -376,6 +376,7 @@ public:
   void check_blocklisted_watchers() final;
   void clear_primary_state() final {
     recovery_finisher = nullptr;
+    projected_log = PGLog::IndexedLog();
   }
 
   void queue_check_readable(epoch_t last_peering_reset,
@@ -517,6 +518,9 @@ public:
 
 
   // Utility
+  bool is_active() const {
+    return peering_state.is_active();
+  }
   bool is_active_clean() const {
     return peering_state.is_active() && peering_state.is_clean();
   }
@@ -589,11 +593,6 @@ public:
   using with_obc_func_t =
     std::function<load_obc_iertr::future<> (ObjectContextRef, ObjectContextRef)>;
 
-  load_obc_iertr::future<> with_locked_obc(
-    const hobject_t &hobj,
-    const OpInfo &op_info,
-    with_obc_func_t&& f);
-
   interruptible_future<> handle_rep_op(Ref<MOSDRepOp> m);
   void update_stats(const pg_stat_t &stat);
   interruptible_future<> update_snap_map(
@@ -603,7 +602,7 @@ public:
     std::vector<pg_log_entry_t>&& logv,
     const eversion_t &trim_to,
     const eversion_t &roll_forward_to,
-    const eversion_t &min_last_complete_ondisk,
+    const eversion_t &pg_commited_to,
     bool transaction_applied,
     ObjectStore::Transaction &txn,
     bool async = false);
@@ -826,8 +825,15 @@ public:
     const eversion_t version;
     const int err;
   };
+  PGLog::IndexedLog projected_log;
   interruptible_future<std::optional<complete_op_t>>
   already_complete(const osd_reqid_t& reqid);
+  bool check_in_progress_op(
+    const osd_reqid_t& reqid,
+    eversion_t *version,
+    version_t *user_version,
+    int *return_code,
+    std::vector<pg_log_op_return_item_t> *op_returns) const;
   int get_recovery_op_priority() const {
     int64_t pri = 0;
     get_pgpool().info.opts.get(pool_opts_t::RECOVERY_OP_PRIORITY, &pri);
