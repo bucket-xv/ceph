@@ -34,6 +34,8 @@ _SYNC_GROUP_ID = 'dashboard_admin_group'
 _SYNC_FLOW_ID = 'dashboard_admin_flow'
 _SYNC_PIPE_ID = 'dashboard_admin_pipe'
 
+_RGW_USER = 'dashboard'
+
 
 class NoRgwDaemonsException(Exception):
     def __init__(self):
@@ -257,7 +259,6 @@ def _get_user_keys(user: str, realm: Optional[str] = None) -> Tuple[str, str]:
 
 def configure_rgw_credentials():
     logger.info('Configuring dashboard RGW credentials')
-    user = 'dashboard'
     realms = []
     access_key = ''
     secret_key = ''
@@ -271,7 +272,7 @@ def configure_rgw_credentials():
             realm_access_keys = {}
             realm_secret_keys = {}
             for realm in realms:
-                realm_access_key, realm_secret_key = _get_user_keys(user, realm)
+                realm_access_key, realm_secret_key = _get_user_keys(_RGW_USER, realm)
                 if realm_access_key:
                     realm_access_keys[realm] = realm_access_key
                     realm_secret_keys[realm] = realm_secret_key
@@ -279,7 +280,7 @@ def configure_rgw_credentials():
                 access_key = json.dumps(realm_access_keys)
                 secret_key = json.dumps(realm_secret_keys)
         else:
-            access_key, secret_key = _get_user_keys(user)
+            access_key, secret_key = _get_user_keys(_RGW_USER)
 
         assert access_key and secret_key
         Settings.RGW_API_ACCESS_KEY = access_key
@@ -309,18 +310,25 @@ class RgwClient(RestClient):
 
     @staticmethod
     def _get_daemon_connection_info(daemon_name: str) -> dict:
+        access_key = None
+        secret_key = None
+
         try:
+            # Try to fetch realm-specific credentials first
             realm_name = RgwClient._daemons[daemon_name].realm_name
             access_key = Settings.RGW_API_ACCESS_KEY[realm_name]
             secret_key = Settings.RGW_API_SECRET_KEY[realm_name]
         except TypeError:
-            # Legacy string values.
+            # Handle legacy case where credentials are simple strings, not per-realm
             access_key = Settings.RGW_API_ACCESS_KEY
             secret_key = Settings.RGW_API_SECRET_KEY
         except KeyError as error:
-            raise DashboardException(msg='Credentials not found for RGW Daemon: {}'.format(error),
-                                     http_status_code=404,
-                                     component='rgw')
+            # If the realm-specific credentials are not found, try fetching dashboard user keys
+            access_key, secret_key = _get_user_keys('dashboard')
+            if not access_key:
+                raise DashboardException(msg='Credentials not found for RGW Daemon: {}'.format(error),  # noqa E501  # pylint: disable=line-too-long
+                                         http_status_code=404,
+                                         component='rgw')
 
         return {'access_key': access_key, 'secret_key': secret_key}
 

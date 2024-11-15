@@ -128,13 +128,13 @@ os._exit = os_exit_noop   # type: ignore
 
 # Default container images -----------------------------------------------------
 DEFAULT_IMAGE = 'quay.io/ceph/ceph'
-DEFAULT_PROMETHEUS_IMAGE = 'quay.io/prometheus/prometheus:v2.43.0'
-DEFAULT_NODE_EXPORTER_IMAGE = 'quay.io/prometheus/node-exporter:v1.5.0'
+DEFAULT_PROMETHEUS_IMAGE = 'quay.io/prometheus/prometheus:v2.51.0'
+DEFAULT_NODE_EXPORTER_IMAGE = 'quay.io/prometheus/node-exporter:v1.7.0'
 DEFAULT_NVMEOF_IMAGE = 'quay.io/ceph/nvmeof:1.2.5'
 DEFAULT_LOKI_IMAGE = 'quay.io/ceph/loki:3.0.0'
 DEFAULT_PROMTAIL_IMAGE = 'quay.io/ceph/promtail:3.0.0'
 DEFAULT_ALERT_MANAGER_IMAGE = 'quay.io/prometheus/alertmanager:v0.25.0'
-DEFAULT_GRAFANA_IMAGE = 'quay.io/ceph/grafana:9.4.12'
+DEFAULT_GRAFANA_IMAGE = 'quay.io/ceph/grafana:10.4.0'
 DEFAULT_HAPROXY_IMAGE = 'quay.io/ceph/haproxy:2.3'
 DEFAULT_KEEPALIVED_IMAGE = 'quay.io/ceph/keepalived:2.2.4'
 DEFAULT_SNMP_GATEWAY_IMAGE = 'quay.io/ceph/snmp-notifier:v1.2.1'
@@ -514,6 +514,19 @@ class CephadmOrchestrator(orchestrator.Orchestrator, MgrModule,
             'the host (in seconds)'
         ),
         Option(
+            'ssh_keepalive_interval',
+            type='int',
+            default=7,
+            desc='How often ssh connections are checked for liveness'
+        ),
+        Option(
+            'ssh_keepalive_count_max',
+            type='int',
+            default=3,
+            desc='How many times ssh connections can fail liveness checks '
+            'before the host is marked offline'
+        ),
+        Option(
             'cephadm_log_destination',
             type='str',
             default='',
@@ -614,6 +627,8 @@ class CephadmOrchestrator(orchestrator.Orchestrator, MgrModule,
             self.default_cephadm_command_timeout = 0
             self.cephadm_log_destination = ''
             self.oob_default_addr = ''
+            self.ssh_keepalive_interval = 0
+            self.ssh_keepalive_count_max = 0
 
         self.notify(NotifyType.mon_map, None)
         self.config_notify()
@@ -3149,10 +3164,13 @@ Then run the following:
         self,
         entity: str,
         service_name: Optional[str] = None,
-        hostname: Optional[str] = None
+        hostname: Optional[str] = None,
+        no_exception_when_missing: bool = False
     ) -> str:
         cert = self.cert_key_store.get_cert(entity, service_name or '', hostname or '')
         if not cert:
+            if no_exception_when_missing:
+                return ''
             raise OrchSecretNotFound(entity=entity, service_name=service_name, hostname=hostname)
         return cert
 
@@ -3161,10 +3179,13 @@ Then run the following:
         self,
         entity: str,
         service_name: Optional[str] = None,
-        hostname: Optional[str] = None
+        hostname: Optional[str] = None,
+        no_exception_when_missing: bool = False
     ) -> str:
         key = self.cert_key_store.get_key(entity, service_name or '', hostname or '')
         if not key:
+            if no_exception_when_missing:
+                return ''
             raise OrchSecretNotFound(entity=entity, service_name=service_name, hostname=hostname)
         return key
 
