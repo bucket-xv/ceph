@@ -3099,9 +3099,7 @@ int OSDMap::_pick_primary(const vector<int> &osds) const
   }
   return -1;
 }
-
-// MODIFY-XCH: add raw_primary in apply to allow erasure coded pools have primary in upmap
-void OSDMap::_apply_upmap(const pg_pool_t &pi, pg_t raw_pg, vector<int> *raw, int &raw_primary) const
+void OSDMap::_apply_upmap(const pg_pool_t &pi, pg_t raw_pg, vector<int> *raw) const
 {
   pg_t pg = pi.raw_pg_to_pg(raw_pg);
   auto p = pg_upmap.find(pg);
@@ -3165,36 +3163,25 @@ void OSDMap::_apply_upmap(const pg_pool_t &pi, pg_t raw_pg, vector<int> *raw, in
     if (new_prim != CRUSH_ITEM_NONE && new_prim < max_osd && new_prim >= 0 &&
         osd_weight[new_prim] != 0)
     {
-      // MODIFY-XCH: erasure coded pools have their own way to couple with primary
-      if (pg.is_erasure()){
-        for(int i = 0; i < (int)raw->size(); i++){
-          if ((*raw)[i] == new_prim){
-            raw_primary = new_prim;
-            break;
-          }
+      int new_prim_idx = 0;
+      for (int i = 1; i < (int)raw->size(); i++)
+      { // start from 1 on purpose
+        if ((*raw)[i] == new_prim)
+        {
+          new_prim_idx = i;
+          break;
         }
       }
-      else{
-        int new_prim_idx = 0;
-        for (int i = 1; i < (int)raw->size(); i++)
-        { // start from 1 on purpose
-          if ((*raw)[i] == new_prim)
-          {
-            new_prim_idx = i;
-            break;
-          }
-        }
-        if (new_prim_idx > 0)
-        {
-          // swap primary
-          (*raw)[new_prim_idx] = (*raw)[0];
-          (*raw)[0] = new_prim;
-        }
-        raw_primary = new_prim;
+      if (new_prim_idx > 0)
+      {
+        // swap primary
+        (*raw)[new_prim_idx] = (*raw)[0];
+        (*raw)[0] = new_prim;
       }
     }
   }
 }
+
 
 // pg -> (up osd list)
 void OSDMap::_raw_to_up_osds(const pg_pool_t &pool, const vector<int> &raw,
