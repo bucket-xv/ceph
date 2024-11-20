@@ -3100,7 +3100,8 @@ int OSDMap::_pick_primary(const vector<int> &osds) const
   return -1;
 }
 
-void OSDMap::_apply_upmap(const pg_pool_t &pi, pg_t raw_pg, vector<int> *raw) const
+// MODIFY-XCH: add raw_primary in apply to allow erasure coded pools have primary in upmap
+void OSDMap::_apply_upmap(const pg_pool_t &pi, pg_t raw_pg, vector<int> *raw, int &raw_primary) const
 {
   pg_t pg = pi.raw_pg_to_pg(raw_pg);
   auto p = pg_upmap.find(pg);
@@ -3164,20 +3165,32 @@ void OSDMap::_apply_upmap(const pg_pool_t &pi, pg_t raw_pg, vector<int> *raw) co
     if (new_prim != CRUSH_ITEM_NONE && new_prim < max_osd && new_prim >= 0 &&
         osd_weight[new_prim] != 0)
     {
-      int new_prim_idx = 0;
-      for (int i = 1; i < (int)raw->size(); i++)
-      { // start from 1 on purpose
-        if ((*raw)[i] == new_prim)
-        {
-          new_prim_idx = i;
-          break;
+      // MODIFY-XCH: erasure coded pools have their own way to couple with primary
+      if (pg.is_erasure()){
+        for(int i = 0; i < (int)raw->size(); i++){
+          if ((*raw)[i] == new_prim){
+            raw_primary = new_prim;
+            break;
+          }
         }
       }
-      if (new_prim_idx > 0)
-      {
-        // swap primary
-        (*raw)[new_prim_idx] = (*raw)[0];
-        (*raw)[0] = new_prim;
+      else{
+        int new_prim_idx = 0;
+        for (int i = 1; i < (int)raw->size(); i++)
+        { // start from 1 on purpose
+          if ((*raw)[i] == new_prim)
+          {
+            new_prim_idx = i;
+            break;
+          }
+        }
+        if (new_prim_idx > 0)
+        {
+          // swap primary
+          (*raw)[new_prim_idx] = (*raw)[0];
+          (*raw)[0] = new_prim;
+        }
+        raw_primary = new_prim;
       }
     }
   }
@@ -7781,13 +7794,16 @@ int OSDMap::calc_read_balance_score(CephContext *cct, int64_t pool_id,
 
   const pg_pool_t *pool = tmp_osd_map.get_pg_pool(pool_id);
   // MODIFY-XCH: remove check for replicated
-  // if (!pool->is_replicated())
-  if (0)
-  {
+  if (!pool->is_replicated()){
     zero_rbi(*p_rbi);
-    p_rbi->err_msg = fmt::format("pool {} is not a replicated pool, read balance score is meaningless", pool_id);
-    return -EPERM;
+    return 0;
   }
+  // if (0)
+  // {
+  //   zero_rbi(*p_rbi);
+  //   p_rbi->err_msg = fmt::format("pool {} is not a replicated pool, read balance score is meaningless", pool_id);
+  //   return -EPERM;
+  // }
   if (pool->opts.is_set(pool_opts_t::READ_RATIO))
   {
     // if read_ratio is set use osd-size-aware read balance score
