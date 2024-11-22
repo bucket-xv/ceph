@@ -7780,9 +7780,15 @@ int OSDMap::calc_read_balance_score(CephContext *cct, int64_t pool_id,
   }
 
   const pg_pool_t *pool = tmp_osd_map.get_pg_pool(pool_id);
-  // MODIFY-XCH: remove check for replicated
+  // MODIFY-XCH: Always not optimal for erasure coded pools for simplicity
+  // TODO-XCH: Fix this
   if (!pool->is_replicated()){
     zero_rbi(*p_rbi);
+    p_rbi->optimal_score = 1.0;
+    p_rbi->acting_adj_score = 2.0;
+    p_rbi->acting_raw_score = 2.0;
+    p_rbi->adjusted_score = 2.0;
+    p_rbi->raw_score = 2.0;
     return 0;
   }
   // if (0)
