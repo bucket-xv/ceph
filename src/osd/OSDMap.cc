@@ -3168,7 +3168,7 @@ void OSDMap::_apply_upmap(const pg_pool_t &pi, pg_t raw_pg, vector<int> *raw) co
     }
   }
   // MODIFY-XCH: erasure coded pools have their own way to couple with
-  if(!pool->can_shift_osds())
+  if(!pi->can_shift_osds())
     return;
 
   auto r = pg_upmap_primaries.find(pg);
