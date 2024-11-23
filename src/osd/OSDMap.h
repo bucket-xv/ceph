@@ -1374,7 +1374,11 @@ private:
       const pg_pool_t &pool, pg_t pg,
       std::vector<int> *osds,
       ps_t *ppps) const;
+
   int _pick_primary(const std::vector<int> &osds) const;
+  // MODIFY-XCH: add a new function to get the erasure pool's primary
+  int _pick_upmap_primary(const pg_pool_t &pi, pg_t raw_pg, const vector<int> &osds) const;
+
   void _remove_nonexistent_osds(const pg_pool_t &pool, std::vector<int> &osds) const;
 
   void _apply_primary_affinity(ps_t seed, const pg_pool_t &pool,

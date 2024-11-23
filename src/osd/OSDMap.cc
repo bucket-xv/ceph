@@ -3088,6 +3088,20 @@ void OSDMap::_pg_to_raw_osds(
     *ppps = pps;
 }
 
+// MODIFY-XCH: add a new function to get the erasure pool's primary
+int OSDMap::_pick_upmap_primary(const pg_pool_t &pi, pg_t raw_pg, const vector<int> &osds) const
+{
+  pg_t pg = pi.raw_pg_to_pg(raw_pg);
+  auto r = pg_upmap_primaries.find(pg);
+  if (r != pg_upmap_primaries.end())
+  {
+    int osd = r->second;
+    if(exists(osd) && !is_down(osd))
+      return osd;
+  }
+  return _pick_primary(osds);
+}
+
 int OSDMap::_pick_primary(const vector<int> &osds) const
 {
   for (auto osd : osds)
@@ -3153,6 +3167,10 @@ void OSDMap::_apply_upmap(const pg_pool_t &pi, pg_t raw_pg, vector<int> *raw) co
       }
     }
   }
+  // MODIFY-XCH: erasure coded pools have their own way to couple with
+  if(!pool->can_shift_osds())
+    return;
+
   auto r = pg_upmap_primaries.find(pg);
   if (r != pg_upmap_primaries.end())
   {
@@ -3373,7 +3391,8 @@ void OSDMap::pg_to_raw_up(pg_t pg, vector<int> *up, int *primary) const
   _pg_to_raw_osds(*pool, pg, &raw, &pps);
   _apply_upmap(*pool, pg, &raw);
   _raw_to_up_osds(*pool, raw, up);
-  *primary = _pick_primary(raw);
+  // MODIFY-XCH: get the erasure pool's primary
+  *primary = _pick_upmap_primary(*pool, pg, raw);
   _apply_primary_affinity(pps, *pool, up, primary);
 }
 
@@ -3408,7 +3427,8 @@ void OSDMap::_pg_to_up_acting_osds(
     _pg_to_raw_osds(*pool, pg, &raw, &pps);
     _apply_upmap(*pool, pg, &raw);
     _raw_to_up_osds(*pool, raw, &_up);
-    _up_primary = _pick_primary(_up);
+    // MODIFY-XCH: pick the upmap primary
+    _up_primary = _pick_upmap_primary(*pool, pg, _up);
     _apply_primary_affinity(pps, *pool, &_up, &_up_primary);
     if (_acting.empty())
     {
