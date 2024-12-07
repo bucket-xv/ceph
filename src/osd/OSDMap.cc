@@ -5942,10 +5942,10 @@ int OSDMap::balance_ec_primaries(
       pending_inc->new_pg_upmap_primary[pg] = curr_best_osd;
       ++num_changes;
     }
-    if(!reconstruction){
-      bytes_used_by_osd[curr_best_osd] -= bytes/2;
+    if(!reconstruction && k>1){
+      bytes_used_by_osd[curr_best_osd] -= bytes/(k-1);
       for(int i=0;i<k;i++)
-        bytes_used_by_osd[up_osds[i]] += bytes/2;
+        bytes_used_by_osd[up_osds[i]] += bytes/(k-1);
     }
   }
   return num_changes;
