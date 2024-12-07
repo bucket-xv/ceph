@@ -5860,6 +5860,7 @@ int OSDMap::balance_ec_primaries(
     return -EINVAL;
   }
   int k = atoi(pk->second.c_str());
+  ldout(cct, 10) << __func__ << " k =  " << k << dendl;
   // Get pgs by osd (map of osd -> pgs)
   // Get primaries by osd (map of osd -> primary)
   map<uint64_t, set<pg_t>> pgs_by_osd;
