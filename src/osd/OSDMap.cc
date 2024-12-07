@@ -5850,8 +5850,8 @@ int OSDMap::balance_ec_primaries(
   }
 
   // Info to be used in verify_upmap
-  int pool_size = pool->get_size();
-  int crush_rule = pool->get_crush_rule();
+  // int pool_size = pool->get_size();
+  // int crush_rule = pool->get_crush_rule();
 
   auto &ecp = get_erasure_code_profile(pool->erasure_code_profile);
   auto pk = ecp.find("k");
@@ -5897,7 +5897,15 @@ int OSDMap::balance_ec_primaries(
     int curr_best_osd = up_primary;
     ldout(cct, 10) << __func__ << "up_primary " << up_primary << " primary affinity "<<
       get_primary_affinityf(up_primary) << dendl;
-    for(int i=0;i<min(up_osds.size(),k);i++)
+    bool reconstruction = 0;
+    int max_osd = up_osds.size();
+    for (auto osd : up_osds){
+      if(osd == CRUSH_ITEM_NONE){
+        reconstruction = 1;
+        max_osd = k;
+      }
+    }
+    for(int i = 0;i < max_osd;i++)
     {
       int osd = up_osds[i];
       if(osd == up_primary|| osd==CRUSH_ITEM_NONE)
@@ -5928,11 +5936,16 @@ int OSDMap::balance_ec_primaries(
       }
     }
     bytes_used_by_osd[curr_best_osd] += bytes;
-    if(curr_best_osd != up_primary){
+    if (curr_best_osd != up_primary){
       ldout(cct, 10) << __func__ << " pg " << pg << " moving from " << up_primary << " to " << curr_best_osd << dendl;
       tmp_osd_map.pg_upmap_primaries[pg] = curr_best_osd;
       pending_inc->new_pg_upmap_primary[pg] = curr_best_osd;
       ++num_changes;
+    }
+    if(!reconstruction){
+      bytes_used_by_osd[curr_best_osd] -= bytes/2;
+      for(int i=0;i<k;i++)
+        bytes_used_by_osd[up_osds[i]] += bytes/2;
     }
   }
   return num_changes;
