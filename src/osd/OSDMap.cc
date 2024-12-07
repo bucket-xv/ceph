@@ -5946,7 +5946,7 @@ int OSDMap::balance_ec_primaries(
       for (auto &osd: up_osds){
         if(osd==CRUSH_ITEM_NONE)
           continue;
-        if(++count>=k) break;
+        if(++count>k) break;
         if(osd == curr_best_osd) continue;
         bytes_used_by_osd[osd] += bytes/k;
       }
