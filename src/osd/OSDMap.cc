@@ -5897,19 +5897,16 @@ int OSDMap::balance_ec_primaries(
     int curr_best_osd = up_primary;
     ldout(cct, 10) << __func__ << "up_primary " << up_primary << " primary affinity "<<
       get_primary_affinityf(up_primary) << dendl;
-    bool reconstruction = 0;
-    int max_osd = k;
-    for (auto osd : up_osds){
-      if(osd == CRUSH_ITEM_NONE){
-        reconstruction = 1;
-        max_osd = up_osds.size();
-      }
-    }
-    for(int i = 0 ; i < max_osd; i++)
+      
+    // In most cases, only the first k serving osds are considered.
+    // Otherwise, sum of the bandwidth will go up, which generally is not optimal.
+    int count =0;
+    for(auto &osd: up_osds)
     {
-      int osd = up_osds[i];
-      if(osd == up_primary|| osd==CRUSH_ITEM_NONE)
+      if(osd==CRUSH_ITEM_NONE)
         continue;
+      if(++count>k) break;
+      if(osd == curr_best_osd) continue;
       if(bytes_used_by_osd.find(osd) == bytes_used_by_osd.end())
       {
         ldout(cct, 10) << __func__ << " ERROR: osd " << osd << " not found in bytes_used_by_osd" << dendl;
@@ -5942,10 +5939,16 @@ int OSDMap::balance_ec_primaries(
       pending_inc->new_pg_upmap_primary[pg] = curr_best_osd;
       ++num_changes;
     }
-    if(!reconstruction && k>1){
-      bytes_used_by_osd[curr_best_osd] -= bytes/(k-1);
-      for(int i=0;i<k;i++)
-        bytes_used_by_osd[up_osds[i]] += bytes/(k-1);
+    // All other osds need to send bytes/(k-1) bytes
+    if (k>1) {
+      int count = 0;
+      for (auto &osd: up_osds){
+        if(osd==CRUSH_ITEM_NONE)
+          continue;
+        if(++count>k) break;
+        if(osd == curr_best_osd) continue;
+        bytes_used_by_osd[osd] += bytes/(k-1);
+      }
     }
   }
   return num_changes;
