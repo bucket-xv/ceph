@@ -5941,14 +5941,14 @@ int OSDMap::balance_ec_primaries(
       ++num_changes;
     }
     // All other osds need to send bytes/(k-1) bytes
-    if (k>1) {
+    if (k>0) {
       int count = 0;
       for (auto &osd: up_osds){
         if(osd==CRUSH_ITEM_NONE)
           continue;
         if(++count>=k) break;
         if(osd == curr_best_osd) continue;
-        bytes_used_by_osd[osd] += bytes/(k-1);
+        bytes_used_by_osd[osd] += bytes/k;
       }
     }
   }
