@@ -5898,14 +5898,14 @@ int OSDMap::balance_ec_primaries(
     ldout(cct, 10) << __func__ << "up_primary " << up_primary << " primary affinity "<<
       get_primary_affinityf(up_primary) << dendl;
     bool reconstruction = 0;
-    int max_osd = up_osds.size();
+    int max_osd = k;
     for (auto osd : up_osds){
       if(osd == CRUSH_ITEM_NONE){
         reconstruction = 1;
-        max_osd = k;
+        max_osd = up_osds.size();
       }
     }
-    for(int i = 0;i < max_osd;i++)
+    for(int i = 0 ; i < max_osd; i++)
     {
       int osd = up_osds[i];
       if(osd == up_primary|| osd==CRUSH_ITEM_NONE)
