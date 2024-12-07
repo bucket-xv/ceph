@@ -5853,6 +5853,13 @@ int OSDMap::balance_ec_primaries(
   int pool_size = pool->get_size();
   int crush_rule = pool->get_crush_rule();
 
+  auto &ecp = get_erasure_code_profile(pool->erasure_code_profile);
+  auto pk = ecp.find("k");
+  if (pk == ecp.end()){
+    ldout(cct, 10) << __func__ << " erasure code profile " << pool->erasure_code_profile << " does not have k" << dendl;
+    return -EINVAL;
+  }
+  int k = atoi(pk->second.c_str());
   // Get pgs by osd (map of osd -> pgs)
   // Get primaries by osd (map of osd -> primary)
   map<uint64_t, set<pg_t>> pgs_by_osd;
@@ -5890,8 +5897,11 @@ int OSDMap::balance_ec_primaries(
     int curr_best_osd = up_primary;
     ldout(cct, 10) << __func__ << "up_primary " << up_primary << " primary affinity "<<
       get_primary_affinityf(up_primary) << dendl;
-    for(auto osd : up_osds)
+    for(int i=0;i<min(up_osds.size(),k);i++)
     {
+      int osd = up_osds[i];
+      if(osd == up_primary|| osd==CRUSH_ITEM_NONE)
+        continue;
       if(bytes_used_by_osd.find(osd) == bytes_used_by_osd.end())
       {
         ldout(cct, 10) << __func__ << " ERROR: osd " << osd << " not found in bytes_used_by_osd" << dendl;
