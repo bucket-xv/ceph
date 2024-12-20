@@ -5885,8 +5885,10 @@ int OSDMap::balance_ec_primaries(
     }
   }
 
+  // Sort the pgs in descending order of bytes
   sort(bytes_used_by_pg.begin(), bytes_used_by_pg.end(), std::greater<std::pair<uint64_t, pg_t>>());
   int num_changes = 0;
+
   // First we allocate the bandwidth necessary for all data chunks
   // All data chunks need to send bytes/k bytes
   for(auto &[bytes, pg] : bytes_used_by_pg){
@@ -5915,12 +5917,13 @@ int OSDMap::balance_ec_primaries(
     tmp_osd_map.pg_to_up_acting_osds(pg, &up_osds, &up_primary,
                                        &acting_osds, &acting_primary);
     int curr_best_osd = up_primary;
-    ldout(cct, 10) << __func__ << "up_primary " << up_primary << " primary affinity "<<
+    ldout(cct, 10) << __func__ << " up_primary " << up_primary << " primary affinity "<<
       get_primary_affinityf(up_primary) << dendl;
       
     // In most cases, only the first k serving osds are considered.
     // Otherwise, sum of the bandwidth will go up, which generally is not optimal.
-    int count =0;
+    int count = 0;
+    uint64_t additional_bytes = bytes*(k-1)/k;
     for(auto &osd: up_osds)
     {
       if(osd==CRUSH_ITEM_NONE)
@@ -5933,8 +5936,8 @@ int OSDMap::balance_ec_primaries(
         return -EINVAL;
       }
       
-      if(get_primary_affinityf(curr_best_osd) * (float)bytes_used_by_osd[osd] < 
-        get_primary_affinityf(osd) * (float)bytes_used_by_osd[curr_best_osd])
+      if(get_primary_affinityf(curr_best_osd) * (float)(bytes_used_by_osd[osd] + additional_bytes) < 
+        get_primary_affinityf(osd) * (float)(bytes_used_by_osd[curr_best_osd] + additional_bytes))
       {
         
         // TODO-XCH: This function seems to only handle replicated pools
@@ -5952,7 +5955,7 @@ int OSDMap::balance_ec_primaries(
         else ldout(cct, 10) << __func__ << " not legal swap" << " osd " << osd << dendl;
       }
     }
-    bytes_used_by_osd[curr_best_osd] += bytes*(k-1)/k;
+    bytes_used_by_osd[curr_best_osd] += additional_bytes;
     if (curr_best_osd != up_primary){
       ldout(cct, 10) << __func__ << " pg " << pg << " moving from " << up_primary << " to " << curr_best_osd << dendl;
       tmp_osd_map.pg_upmap_primaries[pg] = curr_best_osd;
